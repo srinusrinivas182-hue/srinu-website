@@ -1,27 +1,38 @@
 const $ = (id) => document.getElementById(id);
 
+// ---------- Storage helpers ----------
 function load(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key)) ?? fallback; }
   catch { return fallback; }
 }
 function save(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
 
+// ---------- Data ----------
 let workOrders = load("cmms_workorders", []);
-let assets = load("cmms_assets", []);
-let pms = load("cmms_pms", []);
-let parts = load("cmms_parts", []);
+let assets     = load("cmms_assets", []);
+let pms        = load("cmms_pms", []);
+let parts      = load("cmms_parts", []);
 
+// ---------- Small helpers ----------
 function statusTag(s){
   return `<span class="tag">${s}</span>`;
 }
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function dueDate(lastISO, freqDays){
+  const d = new Date(lastISO);
+  d.setDate(d.getDate() + Number(freqDays));
+  return d.toISOString().slice(0,10);
+}
 
+// ---------- Clock ----------
 function refreshClock(){
-  $("clock").textContent = new Date().toLocaleString();
+  const c = $("clock");
+  if (c) c.textContent = new Date().toLocaleString();
 }
 setInterval(refreshClock, 1000);
 refreshClock();
 
-// Navigation
+// ---------- Navigation ----------
 document.querySelectorAll(".nav").forEach(btn => {
   btn.addEventListener("click", () => {
     document.querySelectorAll(".nav").forEach(b => b.classList.remove("active"));
@@ -29,92 +40,142 @@ document.querySelectorAll(".nav").forEach(btn => {
 
     const page = btn.dataset.page;
     document.querySelectorAll(".page").forEach(p => p.classList.add("hidden"));
-    $(page).classList.remove("hidden");
+    const target = $(page);
+    if (target) target.classList.remove("hidden");
 
     refreshAll();
   });
 });
 
-// ---------- Work Orders ----------
+// ============================================================
+// WORK ORDERS + EDIT MODAL + EXPORT CSV
+// ============================================================
 let editingId = null;
-
-$("addWO").addEventListener("click", () => {
-  const title = $("woTitle").value.trim();
-  if(!title) return alert("Enter a title");
-
-  const wo = {
-    id: "WO-" + Math.random().toString(16).slice(2,8).toUpperCase(),
-    title,
-    asset: $("woAsset").value.trim(),
-    priority: $("woPriority").value,
-    status: $("woStatus").value,
-    desc: $("woDesc").value.trim(),
-    createdAt: new Date().toISOString()
-  };
-
-  workOrders.push(wo);
-  save("cmms_workorders", workOrders);
-
-  $("woTitle").value = "";
-  $("woAsset").value = "";
-  $("woDesc").value = "";
-  $("woPriority").value = "Medium";
-  $("woStatus").value = "Open";
-
-  refreshAll();
-});
-
-$("filterStatus").addEventListener("change", renderWOTable);
-$("searchWO").addEventListener("input", renderWOTable);
-$("clearFilter").addEventListener("click", () => {
-  $("filterStatus").value = "All";
-  $("searchWO").value = "";
-  renderWOTable();
-});
 
 function openEditModal(wo){
   editingId = wo.id;
+
   $("editId").textContent = `Editing: ${wo.id}`;
   $("editTitle").value = wo.title || "";
   $("editAsset").value = wo.asset || "";
   $("editPriority").value = wo.priority || "Medium";
   $("editStatus").value = wo.status || "Open";
   $("editDesc").value = wo.desc || "";
+
   $("editModal").classList.remove("hidden");
 }
+
 function closeModal(){
-  $("editModal").classList.add("hidden");
+  const modal = $("editModal");
+  if (modal) modal.classList.add("hidden");
   editingId = null;
 }
-$("closeModal").addEventListener("click", closeModal);
 
-$("saveEdit").addEventListener("click", ()=>{
-  if(!editingId) return;
-  const w = workOrders.find(x => x.id === editingId);
-  if(!w) return;
+// Close modal: X, outside click, Esc
+(function wireModalClose(){
+  const closeBtn = $("closeModal");
+  if (closeBtn) {
+    closeBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      closeModal();
+    });
+  }
 
-  w.title = $("editTitle").value.trim();
-  w.asset = $("editAsset").value.trim();
-  w.priority = $("editPriority").value;
-  w.status = $("editStatus").value;
-  w.desc = $("editDesc").value.trim();
+  const modal = $("editModal");
+  if (modal) {
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) closeModal();
+    });
+  }
 
-  save("cmms_workorders", workOrders);
-  closeModal();
-  refreshAll();
-});
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeModal();
+  });
+})();
 
+const addWOBtn = $("addWO");
+if (addWOBtn) {
+  addWOBtn.addEventListener("click", () => {
+    const title = $("woTitle").value.trim();
+    if(!title) return alert("Enter a title");
+
+    const wo = {
+      id: "WO-" + Math.random().toString(16).slice(2,8).toUpperCase(),
+      title,
+      asset: $("woAsset").value.trim(),
+      priority: $("woPriority").value,
+      status: $("woStatus").value,
+      desc: $("woDesc").value.trim(),
+      createdAt: new Date().toISOString()
+    };
+
+    workOrders.push(wo);
+    save("cmms_workorders", workOrders);
+
+    $("woTitle").value = "";
+    $("woAsset").value = "";
+    $("woDesc").value = "";
+    $("woPriority").value = "Medium";
+    $("woStatus").value = "Open";
+
+    refreshAll();
+  });
+}
+
+const saveEditBtn = $("saveEdit");
+if (saveEditBtn) {
+  saveEditBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    if(!editingId) return;
+
+    const w = workOrders.find(x => x.id === editingId);
+    if(!w) return;
+
+    w.title = $("editTitle").value.trim();
+    w.asset = $("editAsset").value.trim();
+    w.priority = $("editPriority").value;
+    w.status = $("editStatus").value;
+    w.desc = $("editDesc").value.trim();
+
+    save("cmms_workorders", workOrders);
+    closeModal();
+    refreshAll();
+  });
+}
+
+// Filters
+const filterStatus = $("filterStatus");
+if (filterStatus) filterStatus.addEventListener("change", renderWOTable);
+
+const searchWO = $("searchWO");
+if (searchWO) searchWO.addEventListener("input", renderWOTable);
+
+const clearFilter = $("clearFilter");
+if (clearFilter) {
+  clearFilter.addEventListener("click", () => {
+    $("filterStatus").value = "All";
+    $("searchWO").value = "";
+    renderWOTable();
+  });
+}
+
+// Render table
 function renderWOTable(){
-  const status = $("filterStatus").value;
-  const q = $("searchWO").value.trim().toLowerCase();
+  const tbody = $("woTable");
+  if(!tbody) return;
+
+  const status = $("filterStatus") ? $("filterStatus").value : "All";
+  const q = $("searchWO") ? $("searchWO").value.trim().toLowerCase() : "";
 
   let rows = workOrders.slice().reverse();
+
   if(status !== "All") rows = rows.filter(w => w.status === status);
   if(q) rows = rows.filter(w =>
-    (w.title||"").toLowerCase().includes(q) || (w.asset||"").toLowerCase().includes(q)
+    (w.title||"").toLowerCase().includes(q) ||
+    (w.asset||"").toLowerCase().includes(q)
   );
 
-  const tbody = $("woTable");
   tbody.innerHTML = "";
 
   if(rows.length === 0){
@@ -168,49 +229,60 @@ function renderWOTable(){
 }
 
 // Export CSV
-$("exportWO").addEventListener("click", ()=>{
-  if(workOrders.length === 0) return alert("No work orders to export.");
+const exportBtn = $("exportWO");
+if (exportBtn) {
+  exportBtn.addEventListener("click", ()=>{
+    if(workOrders.length === 0) return alert("No work orders to export.");
 
-  const headers = ["id","title","asset","priority","status","desc","createdAt"];
-  const escapeCSV = (v) => `"${String(v ?? "").replaceAll('"','""')}"`;
+    const headers = ["id","title","asset","priority","status","desc","createdAt"];
+    const escapeCSV = (v) => `"${String(v ?? "").replaceAll('"','""')}"`;
 
-  const lines = [
-    headers.join(","),
-    ...workOrders.map(w => headers.map(h => escapeCSV(w[h])).join(","))
-  ];
+    const lines = [
+      headers.join(","),
+      ...workOrders.map(w => headers.map(h => escapeCSV(w[h])).join(","))
+    ];
 
-  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
+    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
 
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "workorders.csv";
-  a.click();
-  URL.revokeObjectURL(url);
-});
-
-// ---------- Assets ----------
-$("addAsset").addEventListener("click", () => {
-  const name = $("assetName").value.trim();
-  if(!name) return alert("Enter asset name");
-
-  assets.push({
-    id: "AS-" + Math.random().toString(16).slice(2,8).toUpperCase(),
-    name,
-    location: $("assetLoc").value.trim(),
-    serial: $("assetSerial").value.trim()
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "workorders.csv";
+    a.click();
+    URL.revokeObjectURL(url);
   });
-  save("cmms_assets", assets);
+}
 
-  $("assetName").value = "";
-  $("assetLoc").value = "";
-  $("assetSerial").value = "";
+// ============================================================
+// ASSETS
+// ============================================================
+const addAssetBtn = $("addAsset");
+if (addAssetBtn) {
+  addAssetBtn.addEventListener("click", () => {
+    const name = $("assetName").value.trim();
+    if(!name) return alert("Enter asset name");
 
-  refreshAll();
-});
+    assets.push({
+      id: "AS-" + Math.random().toString(16).slice(2,8).toUpperCase(),
+      name,
+      location: $("assetLoc").value.trim(),
+      serial: $("assetSerial").value.trim()
+    });
+
+    save("cmms_assets", assets);
+
+    $("assetName").value = "";
+    $("assetLoc").value = "";
+    $("assetSerial").value = "";
+
+    refreshAll();
+  });
+}
 
 function renderAssets(){
   const box = $("assetList");
+  if(!box) return;
+
   if(assets.length === 0){
     box.className = "muted";
     box.textContent = "No assets yet.";
@@ -236,36 +308,37 @@ function renderAssets(){
   });
 }
 
-// ---------- PM ----------
-function todayISO(){ return new Date().toISOString().slice(0,10); }
-function dueDate(lastISO, freqDays){
-  const d = new Date(lastISO);
-  d.setDate(d.getDate() + Number(freqDays));
-  return d.toISOString().slice(0,10);
-}
-if ($("pmLast")) $("pmLast").value = todayISO();
+// ============================================================
+// PM (Preventive Maintenance)
+// ============================================================
+const pmLast = $("pmLast");
+if (pmLast) pmLast.value = todayISO();
 
-$("addPM").addEventListener("click", ()=>{
-  const name = $("pmName").value.trim();
-  const last = $("pmLast").value;
-  if(!name || !last) return alert("Enter PM name and last done date.");
+const addPMBtn = $("addPM");
+if (addPMBtn) {
+  addPMBtn.addEventListener("click", ()=>{
+    const name = $("pmName").value.trim();
+    const last = $("pmLast").value;
+    if(!name || !last) return alert("Enter PM name and last done date.");
 
-  pms.push({
-    id: "PM-" + Math.random().toString(16).slice(2,8).toUpperCase(),
-    name,
-    asset: $("pmAsset").value.trim(),
-    freqDays: $("pmFreq").value,
-    lastDone: last
+    pms.push({
+      id: "PM-" + Math.random().toString(16).slice(2,8).toUpperCase(),
+      name,
+      asset: $("pmAsset").value.trim(),
+      freqDays: $("pmFreq").value,
+      lastDone: last
+    });
+
+    save("cmms_pms", pms);
+
+    $("pmName").value = "";
+    $("pmAsset").value = "";
+    $("pmFreq").value = "30";
+    $("pmLast").value = todayISO();
+
+    refreshAll();
   });
-  save("cmms_pms", pms);
-
-  $("pmName").value = "";
-  $("pmAsset").value = "";
-  $("pmFreq").value = "30";
-  $("pmLast").value = todayISO();
-
-  refreshAll();
-});
+}
 
 function renderPM(){
   const box = $("pmList");
@@ -318,27 +391,33 @@ function renderPM(){
   });
 }
 
-// ---------- Inventory ----------
-$("addPart").addEventListener("click", ()=>{
-  const name = $("partName").value.trim();
-  const qty = $("partQty").value;
-  const min = $("partMin").value;
-  if(!name || qty === "" || min === "") return alert("Enter part name, quantity, and min level.");
+// ============================================================
+// INVENTORY
+// ============================================================
+const addPartBtn = $("addPart");
+if (addPartBtn) {
+  addPartBtn.addEventListener("click", ()=>{
+    const name = $("partName").value.trim();
+    const qty = $("partQty").value;
+    const min = $("partMin").value;
+    if(!name || qty === "" || min === "") return alert("Enter part name, quantity, and min level.");
 
-  parts.push({
-    id: "PT-" + Math.random().toString(16).slice(2,8).toUpperCase(),
-    name,
-    qty: Number(qty),
-    min: Number(min)
+    parts.push({
+      id: "PT-" + Math.random().toString(16).slice(2,8).toUpperCase(),
+      name,
+      qty: Number(qty),
+      min: Number(min)
+    });
+
+    save("cmms_parts", parts);
+
+    $("partName").value = "";
+    $("partQty").value = "";
+    $("partMin").value = "";
+
+    refreshAll();
   });
-  save("cmms_parts", parts);
-
-  $("partName").value = "";
-  $("partQty").value = "";
-  $("partMin").value = "";
-
-  refreshAll();
-});
+}
 
 function renderParts(){
   const box = $("partList");
@@ -391,33 +470,36 @@ function renderParts(){
   });
 }
 
-// ---------- Dashboard ----------
+// ============================================================
+// DASHBOARD
+// ============================================================
 function renderDashboard(){
-  const open = workOrders.filter(w => w.status === "Open").length;
-  const prog = workOrders.filter(w => w.status === "In Progress").length;
-  const done = workOrders.filter(w => w.status === "Completed").length;
+  const kOpen = $("kpiOpen"), kProg = $("kpiProg"), kDone = $("kpiDone"), kAssets = $("kpiAssets");
+  if (kOpen) kOpen.textContent = workOrders.filter(w => w.status === "Open").length;
+  if (kProg) kProg.textContent = workOrders.filter(w => w.status === "In Progress").length;
+  if (kDone) kDone.textContent = workOrders.filter(w => w.status === "Completed").length;
+  if (kAssets) kAssets.textContent = assets.length;
 
-  $("kpiOpen").textContent = open;
-  $("kpiProg").textContent = prog;
-  $("kpiDone").textContent = done;
-  $("kpiAssets").textContent = assets.length;
+  const recentBox = $("recentList");
+  if (recentBox) {
+    const recent = workOrders.slice().reverse().slice(0,5);
+    recentBox.innerHTML = recent.length
+      ? recent.map(w => `
+          <div style="padding:10px;border:1px solid #e5e7eb;border-radius:12px;margin-bottom:10px;background:#fff">
+            <b>${w.title}</b> ${statusTag(w.status)}
+            <div class="muted small">Asset: ${w.asset || "-"} • Priority: ${w.priority}</div>
+          </div>
+        `).join("")
+      : `<div class="muted">No work orders yet.</div>`;
+  }
 
-  const recent = workOrders.slice().reverse().slice(0,5);
-  $("recentList").innerHTML = recent.length
-    ? recent.map(w => `
-        <div style="padding:10px;border:1px solid #e5e7eb;border-radius:12px;margin-bottom:10px;background:#fff">
-          <b>${w.title}</b> ${statusTag(w.status)}
-          <div class="muted small">Asset: ${w.asset || "-"} • Priority: ${w.priority}</div>
-        </div>
-      `).join("")
-    : `<div class="muted">No work orders yet.</div>`;
+  const nextPMBox = $("nextPM");
+  if (nextPMBox) {
+    const next = pms
+      .map(p => ({...p, due: dueDate(p.lastDone, p.freqDays)}))
+      .sort((a,b) => a.due.localeCompare(b.due))[0];
 
-  const next = pms
-    .map(p => ({...p, due: dueDate(p.lastDone, p.freqDays)}))
-    .sort((a,b) => a.due.localeCompare(b.due))[0];
-
-  if ($("nextPM")) {
-    $("nextPM").innerHTML = next
+    nextPMBox.innerHTML = next
       ? `<div style="padding:10px;border:1px solid #e5e7eb;border-radius:12px;background:#fff">
            <b>${next.name}</b>
            <div class="muted small">Asset: ${next.asset || "-"} • Due: <b>${next.due}</b></div>
@@ -426,6 +508,7 @@ function renderDashboard(){
   }
 }
 
+// ---------- Refresh all ----------
 function refreshAll(){
   renderDashboard();
   renderWOTable();
