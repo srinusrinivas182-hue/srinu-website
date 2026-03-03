@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CMMS Demo</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">CMMS</div>
+    <div class="muted" id="clock"></div>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <button class="nav active" data-page="dashboard">Dashboard</button>
+      <button class="nav" data-page="workorders">Work Orders</button>
+      <button class="nav" data-page="assets">Assets</button>
+      <button class="nav" data-page="pm">Preventive Maintenance</button>
+      <button class="nav" data-page="inventory">Inventory</button>
+    </aside>
+
+    <main class="main">
+      <!-- DASHBOARD -->
+      <section id="dashboard" class="page">
+        <h1>Dashboard</h1>
+        <div class="kpis">
+          <div class="card"><div class="muted">Open Work Orders</div><div class="kpi" id="kpiOpen">0</div></div>
+          <div class="card"><div class="muted">In Progress</div><div class="kpi" id="kpiProg">0</div></div>
+          <div class="card"><div class="muted">Completed</div><div class="kpi" id="kpiDone">0</div></div>
+          <div class="card"><div class="muted">Assets</div><div class="kpi" id="kpiAssets">0</div></div>
+        </div>
+
+        <div class="card">
+          <h2>Recent Work Orders</h2>
+          <div id="recentList" class="muted">No work orders yet.</div>
+        </div>
+      </section>
+
+      <!-- WORK ORDERS -->
+      <section id="workorders" class="page hidden">
+        <h1>Work Orders</h1>
+
+        <div class="grid2">
+          <div class="card">
+            <h2>Create Work Order</h2>
+            <div class="form">
+              <input id="woTitle" placeholder="Title (Fix motor vibration)" />
+              <input id="woAsset" placeholder="Asset (CNC #1)" />
+              <select id="woPriority">
+                <option>Low</option><option selected>Medium</option><option>High</option><option>Emergency</option>
+              </select>
+              <select id="woStatus">
+                <option selected>Open</option><option>In Progress</option><option>Completed</option>
+              </select>
+              <textarea id="woDesc" placeholder="Description"></textarea>
+              <button class="btn" id="addWO">Add Work Order</button>
+            </div>
+            <p class="muted small">Saves in browser (localStorage).</p>
+          </div>
+
+          <div class="card">
+            <h2>Filter</h2>
+            <div class="form">
+              <select id="filterStatus">
+                <option value="All" selected>All</option>
+                <option>Open</option><option>In Progress</option><option>Completed</option>
+              </select>
+              <input id="searchWO" placeholder="Search title/asset" />
+              <button class="btn secondary" id="clearFilter">Clear</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Work Orders List</h2>
+          <div class="tableWrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th><th>Title</th><th>Asset</th><th>Priority</th><th>Status</th><th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="woTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ASSETS -->
+      <section id="assets" class="page hidden">
+        <h1>Assets</h1>
+
+        <div class="grid2">
+          <div class="card">
+            <h2>Add Asset</h2>
+            <div class="form">
+              <input id="assetName" placeholder="Asset name (Compressor #2)" />
+              <input id="assetLoc" placeholder="Location (Line 2)" />
+              <input id="assetSerial" placeholder="Serial number (optional)" />
+              <button class="btn" id="addAsset">Add Asset</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <h2>Assets List</h2>
+            <div id="assetList" class="muted">No assets yet.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PM -->
+      <section id="pm" class="page hidden">
+        <h1>Preventive Maintenance</h1>
+        <div class="card">
+          <p class="muted">PM module placeholder (you can add schedules next).</p>
+        </div>
+      </section>
+
+      <!-- INVENTORY -->
+      <section id="inventory" class="page hidden">
+        <h1>Inventory</h1>
+        <div class="card">
+          <p class="muted">Inventory module placeholder (you can add spare parts next).</p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
