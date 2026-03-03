@@ -8,6 +8,8 @@ function save(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
 
 let workOrders = load("cmms_workorders", []);
 let assets = load("cmms_assets", []);
+let pms = load("cmms_pms", []);
+let parts = load("cmms_parts", []);
 
 function statusTag(s){
   return `<span class="tag">${s}</span>`;
@@ -33,7 +35,9 @@ document.querySelectorAll(".nav").forEach(btn => {
   });
 });
 
-// Work orders
+// ---------- Work Orders ----------
+let editingId = null;
+
 $("addWO").addEventListener("click", () => {
   const title = $("woTitle").value.trim();
   if(!title) return alert("Enter a title");
@@ -68,6 +72,38 @@ $("clearFilter").addEventListener("click", () => {
   renderWOTable();
 });
 
+function openEditModal(wo){
+  editingId = wo.id;
+  $("editId").textContent = `Editing: ${wo.id}`;
+  $("editTitle").value = wo.title || "";
+  $("editAsset").value = wo.asset || "";
+  $("editPriority").value = wo.priority || "Medium";
+  $("editStatus").value = wo.status || "Open";
+  $("editDesc").value = wo.desc || "";
+  $("editModal").classList.remove("hidden");
+}
+function closeModal(){
+  $("editModal").classList.add("hidden");
+  editingId = null;
+}
+$("closeModal").addEventListener("click", closeModal);
+
+$("saveEdit").addEventListener("click", ()=>{
+  if(!editingId) return;
+  const w = workOrders.find(x => x.id === editingId);
+  if(!w) return;
+
+  w.title = $("editTitle").value.trim();
+  w.asset = $("editAsset").value.trim();
+  w.priority = $("editPriority").value;
+  w.status = $("editStatus").value;
+  w.desc = $("editDesc").value.trim();
+
+  save("cmms_workorders", workOrders);
+  closeModal();
+  refreshAll();
+});
+
 function renderWOTable(){
   const status = $("filterStatus").value;
   const q = $("searchWO").value.trim().toLowerCase();
@@ -95,6 +131,7 @@ function renderWOTable(){
       <td>${w.priority}</td>
       <td>${statusTag(w.status)}</td>
       <td>
+        <button class="btn secondary" data-act="edit" data-id="${w.id}">Edit</button>
         <button class="btn secondary" data-act="next" data-id="${w.id}">Next</button>
         <button class="btn secondary" data-act="del" data-id="${w.id}">Delete</button>
       </td>
@@ -120,11 +157,39 @@ function renderWOTable(){
         save("cmms_workorders", workOrders);
         refreshAll();
       }
+
+      if(act === "edit"){
+        const w = workOrders.find(x => x.id === id);
+        if(!w) return;
+        openEditModal(w);
+      }
     });
   });
 }
 
-// Assets
+// Export CSV
+$("exportWO").addEventListener("click", ()=>{
+  if(workOrders.length === 0) return alert("No work orders to export.");
+
+  const headers = ["id","title","asset","priority","status","desc","createdAt"];
+  const escapeCSV = (v) => `"${String(v ?? "").replaceAll('"','""')}"`;
+
+  const lines = [
+    headers.join(","),
+    ...workOrders.map(w => headers.map(h => escapeCSV(w[h])).join(","))
+  ];
+
+  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "workorders.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+// ---------- Assets ----------
 $("addAsset").addEventListener("click", () => {
   const name = $("assetName").value.trim();
   if(!name) return alert("Enter asset name");
@@ -171,7 +236,162 @@ function renderAssets(){
   });
 }
 
-// Dashboard
+// ---------- PM ----------
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function dueDate(lastISO, freqDays){
+  const d = new Date(lastISO);
+  d.setDate(d.getDate() + Number(freqDays));
+  return d.toISOString().slice(0,10);
+}
+if ($("pmLast")) $("pmLast").value = todayISO();
+
+$("addPM").addEventListener("click", ()=>{
+  const name = $("pmName").value.trim();
+  const last = $("pmLast").value;
+  if(!name || !last) return alert("Enter PM name and last done date.");
+
+  pms.push({
+    id: "PM-" + Math.random().toString(16).slice(2,8).toUpperCase(),
+    name,
+    asset: $("pmAsset").value.trim(),
+    freqDays: $("pmFreq").value,
+    lastDone: last
+  });
+  save("cmms_pms", pms);
+
+  $("pmName").value = "";
+  $("pmAsset").value = "";
+  $("pmFreq").value = "30";
+  $("pmLast").value = todayISO();
+
+  refreshAll();
+});
+
+function renderPM(){
+  const box = $("pmList");
+  if(!box) return;
+
+  if(pms.length === 0){
+    box.className = "muted";
+    box.textContent = "No PM schedules yet.";
+    return;
+  }
+
+  const now = todayISO();
+
+  box.className = "";
+  box.innerHTML = pms.slice().reverse().map(p=>{
+    const due = dueDate(p.lastDone, p.freqDays);
+    const overdue = due < now;
+    return `
+      <div style="padding:10px;border:1px solid #e5e7eb;border-radius:12px;margin-bottom:10px;background:#fff">
+        <b>${p.name}</b>
+        <span class="tag ${overdue ? "overdue" : "ok"}">${overdue ? "Overdue" : "Scheduled"}</span>
+        <div class="muted small">Asset: ${p.asset || "-"} • Every ${p.freqDays} days</div>
+        <div class="small">Last Done: ${p.lastDone} • Due: <b>${due}</b></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+          <button class="btn secondary" data-done="${p.id}">Mark Done Today</button>
+          <button class="btn secondary" data-del="${p.id}">Delete</button>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  box.querySelectorAll("button").forEach(b=>{
+    b.addEventListener("click", ()=>{
+      const done = b.dataset.done;
+      const del = b.dataset.del;
+
+      if(del){
+        pms = pms.filter(x => x.id !== del);
+        save("cmms_pms", pms);
+        refreshAll();
+      }
+      if(done){
+        const pm = pms.find(x => x.id === done);
+        if(!pm) return;
+        pm.lastDone = todayISO();
+        save("cmms_pms", pms);
+        refreshAll();
+      }
+    });
+  });
+}
+
+// ---------- Inventory ----------
+$("addPart").addEventListener("click", ()=>{
+  const name = $("partName").value.trim();
+  const qty = $("partQty").value;
+  const min = $("partMin").value;
+  if(!name || qty === "" || min === "") return alert("Enter part name, quantity, and min level.");
+
+  parts.push({
+    id: "PT-" + Math.random().toString(16).slice(2,8).toUpperCase(),
+    name,
+    qty: Number(qty),
+    min: Number(min)
+  });
+  save("cmms_parts", parts);
+
+  $("partName").value = "";
+  $("partQty").value = "";
+  $("partMin").value = "";
+
+  refreshAll();
+});
+
+function renderParts(){
+  const box = $("partList");
+  if(!box) return;
+
+  if(parts.length === 0){
+    box.className = "muted";
+    box.textContent = "No parts yet.";
+    return;
+  }
+
+  box.className = "";
+  box.innerHTML = parts.slice().reverse().map(p=>{
+    const low = Number(p.qty) <= Number(p.min);
+    return `
+      <div style="padding:10px;border:1px solid #e5e7eb;border-radius:12px;margin-bottom:10px;background:#fff">
+        <b>${p.name}</b>
+        <span class="tag ${low ? "low" : "ok"}">${low ? "Low Stock" : "OK"}</span>
+        <div class="muted small">Qty: <b>${p.qty}</b> • Min: ${p.min}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+          <button class="btn secondary" data-minus="${p.id}">-1</button>
+          <button class="btn secondary" data-plus="${p.id}">+1</button>
+          <button class="btn secondary" data-del="${p.id}">Delete</button>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  box.querySelectorAll("button").forEach(b=>{
+    b.addEventListener("click", ()=>{
+      const minus = b.dataset.minus;
+      const plus = b.dataset.plus;
+      const del = b.dataset.del;
+
+      if(del){
+        parts = parts.filter(x => x.id !== del);
+        save("cmms_parts", parts);
+        refreshAll();
+      }
+      if(minus || plus){
+        const id = minus || plus;
+        const part = parts.find(x => x.id === id);
+        if(!part) return;
+        const n = Number(part.qty || 0) + (plus ? 1 : -1);
+        part.qty = Math.max(0, n);
+        save("cmms_parts", parts);
+        refreshAll();
+      }
+    });
+  });
+}
+
+// ---------- Dashboard ----------
 function renderDashboard(){
   const open = workOrders.filter(w => w.status === "Open").length;
   const prog = workOrders.filter(w => w.status === "In Progress").length;
@@ -191,11 +411,26 @@ function renderDashboard(){
         </div>
       `).join("")
     : `<div class="muted">No work orders yet.</div>`;
+
+  const next = pms
+    .map(p => ({...p, due: dueDate(p.lastDone, p.freqDays)}))
+    .sort((a,b) => a.due.localeCompare(b.due))[0];
+
+  if ($("nextPM")) {
+    $("nextPM").innerHTML = next
+      ? `<div style="padding:10px;border:1px solid #e5e7eb;border-radius:12px;background:#fff">
+           <b>${next.name}</b>
+           <div class="muted small">Asset: ${next.asset || "-"} • Due: <b>${next.due}</b></div>
+         </div>`
+      : `<div class="muted">No PM schedules yet.</div>`;
+  }
 }
 
 function refreshAll(){
   renderDashboard();
   renderWOTable();
   renderAssets();
+  renderPM();
+  renderParts();
 }
 refreshAll();
