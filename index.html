@@ -3,104 +3,218 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>CMMS</title>
-  <link rel="stylesheet" href="style.css">
+  <title>CMMS Demo</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+  <header class="topbar">
+    <div class="brand">CMMS</div>
+    <div class="muted" id="clock"></div>
+  </header>
 
-<header class="topbar">
-  <div class="brand">CMMS</div>
-  <div id="clock"></div>
-</header>
+  <div class="layout">
+    <aside class="sidebar">
+      <button class="nav active" data-page="dashboard">Dashboard</button>
+      <button class="nav" data-page="workorders">Work Orders</button>
+      <button class="nav" data-page="assets">Assets</button>
+      <button class="nav" data-page="pm">Preventive Maintenance</button>
+      <button class="nav" data-page="inventory">Inventory</button>
+    </aside>
 
-<div class="layout">
+    <main class="main">
+      <!-- DASHBOARD -->
+      <section id="dashboard" class="page">
+        <h1>Dashboard</h1>
 
-  <aside class="sidebar">
-    <button class="nav active" data-page="dashboard">Dashboard</button>
-    <button class="nav" data-page="workorders">Work Orders</button>
-  </aside>
+        <div class="kpis">
+          <div class="card"><div class="muted">Open Work Orders</div><div class="kpi" id="kpiOpen">0</div></div>
+          <div class="card"><div class="muted">In Progress</div><div class="kpi" id="kpiProg">0</div></div>
+          <div class="card"><div class="muted">Completed</div><div class="kpi" id="kpiDone">0</div></div>
+          <div class="card"><div class="muted">Assets</div><div class="kpi" id="kpiAssets">0</div></div>
+        </div>
 
-  <main class="main">
+        <div class="grid2">
+          <div class="card">
+            <h2>Recent Work Orders</h2>
+            <div id="recentList" class="muted">No work orders yet.</div>
+          </div>
+          <div class="card">
+            <h2>Next PM Due</h2>
+            <div id="nextPM" class="muted">No PM schedules yet.</div>
+          </div>
+        </div>
+      </section>
 
-    <!-- DASHBOARD -->
-    <section id="dashboard" class="page">
-      <h1>Dashboard</h1>
-      <div class="card">
-        <div>Open: <span id="kpiOpen">0</span></div>
-        <div>In Progress: <span id="kpiProg">0</span></div>
-        <div>Completed: <span id="kpiDone">0</span></div>
-      </div>
-    </section>
+      <!-- WORK ORDERS -->
+      <section id="workorders" class="page hidden">
+        <h1>Work Orders</h1>
 
-    <!-- WORK ORDERS -->
-    <section id="workorders" class="page hidden">
-      <h1>Work Orders</h1>
+        <div class="grid2">
+          <div class="card">
+            <h2>Create Work Order</h2>
+            <div class="form">
+              <input id="woTitle" placeholder="Title (Fix motor vibration)" />
+              <input id="woAsset" placeholder="Asset (CNC #1)" />
+              <select id="woPriority">
+                <option>Low</option>
+                <option selected>Medium</option>
+                <option>High</option>
+                <option>Emergency</option>
+              </select>
+              <select id="woStatus">
+                <option selected>Open</option>
+                <option>In Progress</option>
+                <option>Completed</option>
+              </select>
+              <textarea id="woDesc" placeholder="Description"></textarea>
+              <button class="btn" id="addWO" type="button">Add Work Order</button>
+              <button class="btn secondary" id="exportWO" type="button">Export Work Orders (CSV)</button>
+            </div>
+            <p class="muted small">Saves in browser (localStorage).</p>
+          </div>
 
-      <div class="card">
-        <input id="woTitle" placeholder="Title">
-        <input id="woAsset" placeholder="Asset">
-        <select id="woPriority">
-          <option>Low</option>
-          <option selected>Medium</option>
-          <option>High</option>
-        </select>
-        <select id="woStatus">
-          <option selected>Open</option>
-          <option>In Progress</option>
-          <option>Completed</option>
-        </select>
-        <textarea id="woDesc" placeholder="Description"></textarea>
-        <button id="addWO">Add Work Order</button>
-      </div>
+          <div class="card">
+            <h2>Filter</h2>
+            <div class="form">
+              <select id="filterStatus">
+                <option value="All" selected>All</option>
+                <option>Open</option>
+                <option>In Progress</option>
+                <option>Completed</option>
+              </select>
+              <input id="searchWO" placeholder="Search title/asset" />
+              <button class="btn secondary" id="clearFilter" type="button">Clear</button>
+            </div>
+          </div>
+        </div>
 
-      <div class="card">
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Title</th>
-              <th>Status</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody id="woTable"></tbody>
-        </table>
-      </div>
+        <div class="card">
+          <h2>Work Orders List</h2>
+          <div class="tableWrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Title</th>
+                  <th>Asset</th>
+                  <th>Priority</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="woTable"></tbody>
+            </table>
+          </div>
+        </div>
 
-    </section>
+        <!-- EDIT MODAL -->
+        <div class="modal hidden" id="editModal">
+          <div class="modalBox">
+            <div class="modalTop">
+              <h2 style="margin:0;">Edit Work Order</h2>
+              <button class="btn secondary" id="closeModal" type="button">X</button>
+            </div>
 
-  </main>
-</div>
+            <div class="form">
+              <input id="editTitle" placeholder="Title" />
+              <input id="editAsset" placeholder="Asset" />
+              <select id="editPriority">
+                <option>Low</option>
+                <option>Medium</option>
+                <option>High</option>
+                <option>Emergency</option>
+              </select>
+              <select id="editStatus">
+                <option>Open</option>
+                <option>In Progress</option>
+                <option>Completed</option>
+              </select>
+              <textarea id="editDesc" placeholder="Description"></textarea>
+              <button class="btn" id="saveEdit" type="button">Save Changes</button>
+            </div>
 
-<!-- EDIT MODAL -->
-<div class="modal hidden" id="editModal">
-  <div class="modalBox">
-    <div class="modalTop">
-      <h2>Edit Work Order</h2>
-      <button type="button" id="closeModal">X</button>
-    </div>
+            <p class="muted small" id="editId"></p>
+          </div>
+        </div>
+      </section>
 
-    <input id="editTitle">
-    <input id="editAsset">
+      <!-- ASSETS -->
+      <section id="assets" class="page hidden">
+        <h1>Assets</h1>
 
-    <select id="editPriority">
-      <option>Low</option>
-      <option>Medium</option>
-      <option>High</option>
-    </select>
+        <div class="grid2">
+          <div class="card">
+            <h2>Add Asset</h2>
+            <div class="form">
+              <input id="assetName" placeholder="Asset name (Compressor #2)" />
+              <input id="assetLoc" placeholder="Location (Line 2)" />
+              <input id="assetSerial" placeholder="Serial number (optional)" />
+              <button class="btn" id="addAsset" type="button">Add Asset</button>
+            </div>
+          </div>
 
-    <select id="editStatus">
-      <option>Open</option>
-      <option>In Progress</option>
-      <option>Completed</option>
-    </select>
+          <div class="card">
+            <h2>Assets List</h2>
+            <div id="assetList" class="muted">No assets yet.</div>
+          </div>
+        </div>
+      </section>
 
-    <textarea id="editDesc"></textarea>
-    <button type="button" id="saveEdit">Save</button>
+      <!-- PM -->
+      <section id="pm" class="page hidden">
+        <h1>Preventive Maintenance</h1>
+
+        <div class="grid2">
+          <div class="card">
+            <h2>Create PM Schedule</h2>
+            <div class="form">
+              <input id="pmName" placeholder="PM name (Monthly oil check)" />
+              <input id="pmAsset" placeholder="Asset (CNC #1)" />
+              <select id="pmFreq">
+                <option value="7">Every 7 days</option>
+                <option value="14">Every 14 days</option>
+                <option value="30" selected>Every 30 days</option>
+                <option value="90">Every 90 days</option>
+              </select>
+              <input id="pmLast" type="date" />
+              <button class="btn" id="addPM" type="button">Add PM</button>
+            </div>
+            <p class="muted small">Due = Last done + frequency</p>
+          </div>
+
+          <div class="card">
+            <h2>PM Schedules</h2>
+            <div id="pmList" class="muted">No PM schedules yet.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- INVENTORY -->
+      <section id="inventory" class="page hidden">
+        <h1>Inventory</h1>
+
+        <div class="grid2">
+          <div class="card">
+            <h2>Add Spare Part</h2>
+            <div class="form">
+              <input id="partName" placeholder="Part (Bearing 6205)" />
+              <input id="partQty" type="number" min="0" placeholder="Quantity" />
+              <input id="partMin" type="number" min="0" placeholder="Min stock level" />
+              <button class="btn" id="addPart" type="button">Add Part</button>
+            </div>
+            <p class="muted small">Low stock alert when Qty ≤ Min</p>
+          </div>
+
+          <div class="card">
+            <h2>Parts List</h2>
+            <div id="partList" class="muted">No parts yet.</div>
+          </div>
+        </div>
+      </section>
+    </main>
   </div>
-</div>
 
-<!-- CACHE BUST -->
-<script src="app.js?v=10"></script>
+  <!-- IMPORTANT: Cache bust so GitHub Pages loads newest JS -->
+  <script src="app.js?v=20"></script>
 </body>
 </html>
