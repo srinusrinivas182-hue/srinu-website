@@ -32,9 +32,15 @@
           <div class="card"><div class="muted">Assets</div><div class="kpi" id="kpiAssets">0</div></div>
         </div>
 
-        <div class="card">
-          <h2>Recent Work Orders</h2>
-          <div id="recentList" class="muted">No work orders yet.</div>
+        <div class="grid2">
+          <div class="card">
+            <h2>Recent Work Orders</h2>
+            <div id="recentList" class="muted">No work orders yet.</div>
+          </div>
+          <div class="card">
+            <h2>Next PM Due</h2>
+            <div id="nextPM" class="muted">No PM schedules yet.</div>
+          </div>
         </div>
       </section>
 
@@ -49,13 +55,19 @@
               <input id="woTitle" placeholder="Title (Fix motor vibration)" />
               <input id="woAsset" placeholder="Asset (CNC #1)" />
               <select id="woPriority">
-                <option>Low</option><option selected>Medium</option><option>High</option><option>Emergency</option>
+                <option>Low</option>
+                <option selected>Medium</option>
+                <option>High</option>
+                <option>Emergency</option>
               </select>
               <select id="woStatus">
-                <option selected>Open</option><option>In Progress</option><option>Completed</option>
+                <option selected>Open</option>
+                <option>In Progress</option>
+                <option>Completed</option>
               </select>
               <textarea id="woDesc" placeholder="Description"></textarea>
               <button class="btn" id="addWO">Add Work Order</button>
+              <button class="btn secondary" id="exportWO">Export Work Orders (CSV)</button>
             </div>
             <p class="muted small">Saves in browser (localStorage).</p>
           </div>
@@ -65,7 +77,9 @@
             <div class="form">
               <select id="filterStatus">
                 <option value="All" selected>All</option>
-                <option>Open</option><option>In Progress</option><option>Completed</option>
+                <option>Open</option>
+                <option>In Progress</option>
+                <option>Completed</option>
               </select>
               <input id="searchWO" placeholder="Search title/asset" />
               <button class="btn secondary" id="clearFilter">Clear</button>
@@ -79,11 +93,46 @@
             <table>
               <thead>
                 <tr>
-                  <th>ID</th><th>Title</th><th>Asset</th><th>Priority</th><th>Status</th><th>Action</th>
+                  <th>ID</th>
+                  <th>Title</th>
+                  <th>Asset</th>
+                  <th>Priority</th>
+                  <th>Status</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody id="woTable"></tbody>
             </table>
+          </div>
+        </div>
+
+        <!-- EDIT MODAL -->
+        <div class="modal hidden" id="editModal">
+          <div class="modalBox">
+            <div class="modalTop">
+              <h2 style="margin:0;">Edit Work Order</h2>
+              <button class="btn secondary" id="closeModal">X</button>
+            </div>
+
+            <div class="form">
+              <input id="editTitle" placeholder="Title" />
+              <input id="editAsset" placeholder="Asset" />
+              <select id="editPriority">
+                <option>Low</option>
+                <option>Medium</option>
+                <option>High</option>
+                <option>Emergency</option>
+              </select>
+              <select id="editStatus">
+                <option>Open</option>
+                <option>In Progress</option>
+                <option>Completed</option>
+              </select>
+              <textarea id="editDesc" placeholder="Description"></textarea>
+              <button class="btn" id="saveEdit">Save Changes</button>
+            </div>
+
+            <p class="muted small" id="editId"></p>
           </div>
         </div>
       </section>
@@ -113,16 +162,52 @@
       <!-- PM -->
       <section id="pm" class="page hidden">
         <h1>Preventive Maintenance</h1>
-        <div class="card">
-          <p class="muted">PM module placeholder (you can add schedules next).</p>
+
+        <div class="grid2">
+          <div class="card">
+            <h2>Create PM Schedule</h2>
+            <div class="form">
+              <input id="pmName" placeholder="PM name (Monthly oil check)" />
+              <input id="pmAsset" placeholder="Asset (CNC #1)" />
+              <select id="pmFreq">
+                <option value="7">Every 7 days</option>
+                <option value="14">Every 14 days</option>
+                <option value="30" selected>Every 30 days</option>
+                <option value="90">Every 90 days</option>
+              </select>
+              <input id="pmLast" type="date" />
+              <button class="btn" id="addPM">Add PM</button>
+            </div>
+            <p class="muted small">Due = Last done + frequency</p>
+          </div>
+
+          <div class="card">
+            <h2>PM Schedules</h2>
+            <div id="pmList" class="muted">No PM schedules yet.</div>
+          </div>
         </div>
       </section>
 
       <!-- INVENTORY -->
       <section id="inventory" class="page hidden">
         <h1>Inventory</h1>
-        <div class="card">
-          <p class="muted">Inventory module placeholder (you can add spare parts next).</p>
+
+        <div class="grid2">
+          <div class="card">
+            <h2>Add Spare Part</h2>
+            <div class="form">
+              <input id="partName" placeholder="Part (Bearing 6205)" />
+              <input id="partQty" type="number" min="0" placeholder="Quantity" />
+              <input id="partMin" type="number" min="0" placeholder="Min stock level" />
+              <button class="btn" id="addPart">Add Part</button>
+            </div>
+            <p class="muted small">Low stock alert when Qty ≤ Min</p>
+          </div>
+
+          <div class="card">
+            <h2>Parts List</h2>
+            <div id="partList" class="muted">No parts yet.</div>
+          </div>
         </div>
       </section>
     </main>
